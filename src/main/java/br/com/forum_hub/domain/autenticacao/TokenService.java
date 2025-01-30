@@ -33,6 +33,19 @@ public class TokenService {
         }
     }
 
+    public String gerarRefreshToken(Usuario usuario) {
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            return JWT.create()
+                    .withIssuer("Forum Hub")
+                    .withSubject(usuario.getId().toString())
+                    .withExpiresAt(LocalDateTime.now().plusMinutes(120).toInstant(ZoneOffset.of("-03:00")))
+                    .sign(algorithm);
+        } catch (JWTCreationException exception){
+            throw new RegraDeNegocioException("Erro ao gerar token JWT");
+        }
+    }
+
     public String verificarToken(String tokenJWT) {
         DecodedJWT decodedJWT;
         try {
@@ -46,4 +59,6 @@ public class TokenService {
             throw new RegraDeNegocioException("Token JWT inválido ou expirado!");
         }
     }
+
+
 }
