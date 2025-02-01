@@ -4,6 +4,8 @@ import br.com.forum_hub.infra.email.EmailService;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -56,5 +58,41 @@ public class UsuarioService implements UserDetailsService {
     public void verificarEmail(String codigo) {
         var usuario = usuarioRepository.findByToken(codigo).orElseThrow();
         usuario.verificar();
+    }
+
+    @Transactional
+    public Usuario editarPerfil(Usuario usuario, DadosEdicaoUsuario dados) {
+        var usuarioAlterado = usuario.alterarDados(dados);
+        return usuarioRepository.save(usuarioAlterado);
+    }
+
+    @Transactional
+    public void alterarSenha(DadosAlteracaoSenha dados, Usuario logado) {
+        if(!passwordEncoder.matches(dados.senhaAtual(), logado.getPassword())){
+            throw new RegraDeNegocioException("Senha digitada não confere com senha atual!");
+        }
+
+        if(!dados.novaSenha().equals(dados.novaSenhaConfirmacao())){
+            throw new RegraDeNegocioException("Senha e confirmação não conferem!");
+        }
+
+        String senhaCriptografada = passwordEncoder.encode(dados.novaSenha());
+        logado.alterarSenha(senhaCriptografada);
+        usuarioRepository.save(logado);
+    }
+
+    @Transactional
+    public void desativarUsuario(Usuario logado) {
+        logado.desativar();
+        usuarioRepository.save(logado);
+    }
+
+    public Usuario buscarPeloNomeUsuario(String nome) {
+        return usuarioRepository.findByNomeUsuarioIgnoreCaseAndVerificadoTrueAndAtivoTrue(nome).orElseThrow(
+                () -> new RegraDeNegocioException("Usuário não encontrado!"));
+    }
+
+    public Page<DadosListagemUsuario> listarUsuarios(Pageable paginacao) {
+        return usuarioRepository.findAllByAtivoTrue(paginacao).map(DadosListagemUsuario::new);
     }
 }
