@@ -30,7 +30,7 @@ public class FiltroTokenAcesso extends OncePerRequestFilter {
         var tokenJWT = recuperarToken(request);
         if (tokenJWT != null) {
             String email = tokenService.verificarToken(tokenJWT);
-            Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email).orElseThrow();
+            Usuario usuario = usuarioRepository.findByEmailIgnoreCaseAndVerificadoTrue(email).orElseThrow();
             Authentication authentication = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }

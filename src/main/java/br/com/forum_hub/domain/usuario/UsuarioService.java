@@ -1,8 +1,8 @@
 package br.com.forum_hub.domain.usuario;
 
+import br.com.forum_hub.infra.email.EmailService;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,9 +21,12 @@ public class UsuarioService implements UserDetailsService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private EmailService emailService;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return usuarioRepository.findByEmailIgnoreCase(username)
+        return usuarioRepository.findByEmailIgnoreCaseAndVerificadoTrue(username)
                 .orElseThrow(() -> new UsernameNotFoundException("O usuário não foi encontrado!"));
     }
 
@@ -31,6 +34,7 @@ public class UsuarioService implements UserDetailsService {
     public Usuario cadastrar(DadosCadastroUsuario dados) {
 
         Optional<Usuario> optionalUsuario = usuarioRepository.findByEmailIgnoreCase(dados.email());
+        System.out.println("Teste: " + optionalUsuario.isPresent());
 
         if(optionalUsuario.isPresent()){
             throw new RegraDeNegocioException("Já existe uma conta cadastrada com esse email!");
@@ -43,6 +47,14 @@ public class UsuarioService implements UserDetailsService {
         var senhaCriptografada = passwordEncoder.encode(dados.senha());
         var usuario = new Usuario(dados, senhaCriptografada);
 
+        emailService.enviarEmailVerificacao(usuario);
+
         return usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public void verificarEmail(String codigo) {
+        var usuario = usuarioRepository.findByToken(codigo).orElseThrow();
+        usuario.verificar();
     }
 }
