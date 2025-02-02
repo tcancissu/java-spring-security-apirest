@@ -1,8 +1,12 @@
 package br.com.forum_hub.domain.usuario;
 
+import br.com.forum_hub.domain.perfil.DadosPerfil;
+import br.com.forum_hub.domain.perfil.PerfilNome;
+import br.com.forum_hub.domain.perfil.PerfilRepository;
 import br.com.forum_hub.infra.email.EmailService;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +30,9 @@ public class UsuarioService implements UserDetailsService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private PerfilRepository perfilRepository;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return usuarioRepository.findByEmailIgnoreCaseAndVerificadoTrue(username)
@@ -47,7 +54,9 @@ public class UsuarioService implements UserDetailsService {
         }
 
         var senhaCriptografada = passwordEncoder.encode(dados.senha());
-        var usuario = new Usuario(dados, senhaCriptografada);
+
+        var perfil = perfilRepository.findByNome(PerfilNome.ESTUDANTE);
+        var usuario = new Usuario(dados, senhaCriptografada, perfil);
 
         emailService.enviarEmailVerificacao(usuario);
 
@@ -94,5 +103,21 @@ public class UsuarioService implements UserDetailsService {
 
     public Page<DadosListagemUsuario> listarUsuarios(Pageable paginacao) {
         return usuarioRepository.findAllByAtivoTrue(paginacao).map(DadosListagemUsuario::new);
+    }
+
+    @Transactional
+    public Usuario adicionarPerfil(Long id, @Valid DadosPerfil dados) {
+        var usuario = usuarioRepository.findById(id).orElseThrow();
+        var perfil = perfilRepository.findByNome(dados.perfilNome());
+        usuario.adicionarPerfil(perfil);
+        return usuario;
+    }
+
+    @Transactional
+    public Usuario removerPerfil(Long id, @Valid DadosPerfil dados) {
+        var usuario = usuarioRepository.findById(id).orElseThrow();
+        var perfil = perfilRepository.findByNome(dados.perfilNome());
+        usuario.removerPerfil(perfil);
+        return usuario;
     }
 }
